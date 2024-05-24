@@ -1,25 +1,44 @@
-import React, { Component, ChangeEvent, FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import React, {
+    Component,
+    ChangeEvent,
+    FormEvent,
+    useState,
+    useEffect,
+} from "react";
+
+import { useNavigate } from "react-router-dom";
 import "./criar.scss";
 import { IProdutos } from "../../../types/Produto";
+import { ICategoria } from "../../../types/Categoria";
+import { getCategorias } from "../../../lib/apiCategoria";
+import { createNewProduto } from "../../../lib/apiProduto";
 
-interface CriarProdutoProps {}
-
-const CriarProduto: React.FC<CriarProdutoProps> = () => {
-    const [produto, setProduto] = React.useState<IProdutos>({
+const CriarProduto: React.FC = () => {
+    const [produto, setProduto] = useState<IProdutos>({
         id: 0,
         name: "",
         price: 0,
         amount: 0,
         description: "",
-        categoria_id: 0,
+        categoria_id: -1,
         active: true,
         createdAt: new Date(),
         updatedAt: new Date(),
     });
+    const [categorias, setCategorias] = useState<ICategoria[]>([]);
+    const [erro, setErro] = useState<string | null>(null);
+    const [showSuccessMessage, setShowSuccessMessage] =
+        useState<boolean>(false);
+    const navigate = useNavigate();
 
-    const [erro, setErro] = React.useState<string | null>(null);
-    const [redirect, setRedirect] = React.useState<boolean>(false);
+    useEffect(() => {
+        const fetchCategorias = async () => {
+            const payload = await getCategorias();
+            console.log(categorias);
+            setCategorias(payload.data);
+        };
+        fetchCategorias();
+    }, []);
 
     const exibeErro = () => {
         if (erro) {
@@ -31,44 +50,36 @@ const CriarProduto: React.FC<CriarProdutoProps> = () => {
         }
     };
 
-    const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (
+        event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
         const { name, value } = event.target;
         const newValue = name === "active" ? value === "true" : value;
         setProduto((prevProduto) => ({
             ...prevProduto,
-            [name]: newValue,
+            [name]: name === "categoria_id" ? Number(value) : newValue,
         }));
     };
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        fetch("http://localhost:3003/api/produtos", {
-            method: "post",
-            body: JSON.stringify(produto),
-            headers: {
-                "Content-Type": "application/json",
-            },
-        })
-            .then((response) => {
-                if (response.ok) {
-                    setRedirect(true);
-                } else {
-                    response.json().then((data) => {
-                        if (data.error) {
-                            setErro(data.error);
-                        }
-                    });
-                }
-            })
-            .catch((error) => {
-                setErro(error.message);
-            });
+        try {
+            await createNewProduto(
+                produto.name,
+                produto.price,
+                produto.amount,
+                produto.description,
+                produto.active,
+                produto.categoria_id
+            );
+            setShowSuccessMessage(true);
+            navigate("/produtos");
+        } catch (error) {
+            console.error("Erro ao salvar a edição na API:", error);
+            setErro("Erro ao criar categoria. Por favor, tente novamente.");
+        }
     };
-
-    if (redirect) {
-        return <Navigate to="/produtos" />;
-    }
 
     return (
         <form onSubmit={handleSubmit}>
@@ -133,6 +144,26 @@ const CriarProduto: React.FC<CriarProdutoProps> = () => {
                         value={produto.description}
                         onChange={handleInputChange}
                     />
+                </div>
+                <div className="produto-insert">
+                    <label htmlFor="categoria_id">Categoria</label>
+                    <br />
+                    <select
+                        name="categoria_id"
+                        value={produto.categoria_id}
+                        onChange={handleInputChange}
+                        required
+                    >
+                        <option value={-1} disabled>
+                            Selecione uma categoria
+                        </option>
+
+                        {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.id}>
+                                {categoria.name_class}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <div className="produto-insert">
                     <label>

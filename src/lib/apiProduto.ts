@@ -94,6 +94,10 @@ export const getProdutos = async () => {
     return get("api/produtos");
 };
 
+export const getProduto = async (id: string) => {
+    return get(`api/produtos/${id} `);
+};
+
 export const updateProduto = async (
     id: number,
     name: string,

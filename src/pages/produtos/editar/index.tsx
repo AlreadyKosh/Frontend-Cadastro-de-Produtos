@@ -2,9 +2,15 @@ import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "./editar.scss";
 import { IProdutos } from "../../../types/Produto";
+import {
+    updateProduto,
+    getProdutos,
+    getProduto,
+} from "../../../lib/apiProduto";
 
 const EditarProduto: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id } = useParams<{ id: string | undefined }>();
+
     const navigate = useNavigate();
 
     const [produto, setProduto] = useState<IProdutos>();
@@ -12,19 +18,20 @@ const EditarProduto: React.FC = () => {
     const [erro, setErro] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch(`http://localhost:3333/api/produtos/${id}`)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Falha ao carregar os dados");
+        const fetchProduto = async () => {
+            try {
+                if (id) {
+                    const payload = await getProduto(id);
+                    setProduto(payload.data);
+                } else {
+                    throw new Error("ID do produto não definido");
                 }
-                return response.json();
-            })
-            .then((data: IProdutos) => {
-                console.log(data);
-                setProduto(data);
-            })
-
-            .catch((error) => setErro(error.message));
+            } catch (error) {
+                console.error("Erro ao obter o produto:", error);
+                setErro("Erro ao carregar o produto");
+            }
+        };
+        fetchProduto();
     }, [id]);
 
     const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -65,13 +72,38 @@ const EditarProduto: React.FC = () => {
         }
     };
 
+    const handleSaveClick = async () => {
+        try {
+            if (produto) {
+                const response = await updateProduto(
+                    produto.id,
+                    produto.name,
+                    produto.price,
+                    produto.amount,
+                    produto.description,
+                    produto.active,
+                    produto.categoria_id
+                );
+                if (response.ok) {
+                    navigate("/produtos");
+                } else {
+                    throw new Error("Erro ao atualizar o produto");
+                }
+            } else {
+                throw new Error("Produto não definido");
+            }
+        } catch (error) {
+            console.error("Erro ao salvar a edição na API:", error);
+        }
+    };
+
     if (!produto) {
         // Adicionar verificação para renderizar enquanto os dados estão sendo carregados
         return <div>Carregando...</div>;
     }
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSaveClick}>
             <fieldset>
                 <legend>Atualizar Produto</legend>
                 <div className="produto-update">
@@ -82,7 +114,7 @@ const EditarProduto: React.FC = () => {
                         id="nome"
                         name="name"
                         placeholder="Nome"
-                        minLength={3}
+                        minLength={1}
                         maxLength={100}
                         required
                         value={produto.name}

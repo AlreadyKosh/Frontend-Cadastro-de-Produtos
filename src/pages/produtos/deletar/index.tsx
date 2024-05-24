@@ -3,7 +3,7 @@ import { Link, useParams, Navigate } from "react-router-dom";
 import "./deletar.scss";
 
 import { IProdutos } from "../../../types/Produto";
-import { deleteProduto } from "../../../lib/api";
+import { deleteProduto } from "../../../lib/apiProduto";
 
 const DeletarProduto: React.FC = () => {
     const { id } = useParams<{ id: string }>();
